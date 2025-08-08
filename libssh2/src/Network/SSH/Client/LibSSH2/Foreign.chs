@@ -831,20 +831,24 @@ sftpWriteFileFromHandler sftph fh =
 -- | Upload bytes to the sftp server
 -- Returns size of sent data.
 sftpWriteFileFromBytes :: SftpHandle -> BSS.ByteString -> IO Integer
-sftpWriteFileFromBytes sftph bs = BSS.useAsCStringLen bs (uncurry (send 0))
+sftpWriteFileFromBytes sftph bs =
+  allocaBytes bufferSize $ \buffer ->
+    BSS.useAsCStringLen bs $ \(src0, srcLen) ->
+      let loop :: Int -> IO Integer
+          loop written
+            | written >= srcLen = pure (toInteger written)
+            | otherwise = do
+                let remainingToSend = srcLen - written
+                    nBytes = min remainingToSend bufferSize
+                    src    = src0 `plusPtr` written
+                copyBytes buffer src nBytes
+                sent <- fmap fromIntegral . handleInt (Just sftph) $
+                  {# call sftp_write #} (toPointer sftph) buffer (fromIntegral nBytes)
+                loop (written + sent)
+      in loop 0
   where
-    send :: Int -> Ptr CChar -> Int -> IO Integer
-    send written _ 0 = pure (toInteger written)
-    send written src len = do
-      let nBytes = min len bufferSize
-      sent <- fmap fromIntegral . handleInt (Just sftph)
-                           $ {# call sftp_write #} (toPointer sftph)
-                                                   src
-                                                   (fromIntegral nBytes)
-      send (written + sent) (src `plusPtr` sent) (len - sent)
-
     bufferSize :: Int
-    bufferSize = 0x100000
+    bufferSize = 32768
 
 data SftpAttributes = SftpAttributes {
   saFlags :: CULong,
