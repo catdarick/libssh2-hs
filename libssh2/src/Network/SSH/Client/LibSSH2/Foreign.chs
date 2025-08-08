@@ -836,11 +836,14 @@ sftpWriteFileFromBytes sftph bs = BSS.useAsCStringLen bs (uncurry (send 0))
     send :: Int -> Ptr CChar -> Int -> IO Integer
     send written _ 0 = pure (toInteger written)
     send written src len = do
+      let ptr = ptrToWordPtr src
+      print $ "Written: " ++ show written ++ "; Ptr: " ++ show ptr ++ "; Len: " ++ show len
       let nBytes = min len bufferSize
       sent <- fmap fromIntegral . handleInt (Just sftph)
                            $ {# call sftp_write #} (toPointer sftph)
                                                    src
                                                    (fromIntegral nBytes)
+      print $ "Sent: " ++ show sent
       send (written + sent) (src `plusPtr` sent) (len - sent)
 
     bufferSize :: Int
