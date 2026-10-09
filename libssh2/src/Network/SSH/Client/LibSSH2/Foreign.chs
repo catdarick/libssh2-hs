@@ -354,23 +354,20 @@ checkKnownHost :: KnownHosts         --
 checkKnownHost kh host port key flags = BSS.useAsCStringLen key $ \(keyPtr, keySize) -> do
   checkKnownHost_ kh host port keyPtr keySize flags nullPtr
 
--- TODO: I don't see the '&' in the libssh2 docs?
-{# fun userauth_publickey_fromfile_ex as publicKeyAuthFile_
-  { toPointer `Session',
-    `String' &,
-    `String',
-    `String',
-    `String' } -> `Int' #}
-
 -- | Perform public key authentication.
-publicKeyAuthFile :: Session -- ^ Session
-                  -> String  -- ^ Username
-                  -> String  -- ^ Path to public key
-                  -> String  -- ^ Path to private key
-                  -> String  -- ^ Passphrase
+publicKeyAuthFile :: Session        -- ^ Session
+                  -> String         -- ^ Username
+                  -> Maybe FilePath -- ^ Path to public key. Nothing derives it from the private key (OpenSSL backend only)
+                  -> FilePath       -- ^ Path to private key
+                  -> String         -- ^ Passphrase
                   -> IO ()
-publicKeyAuthFile session username public private passphrase = void . handleInt (Just session) $
-  publicKeyAuthFile_ session username public private passphrase
+publicKeyAuthFile session username public private passphrase =
+  withCStringLen username $ \(usernameptr, usernamelen) ->
+    maybeWith withCString public $ \publicptr ->
+      withCString private $ \privateptr ->
+        withCString passphrase $ \passphraseptr ->
+          void . handleInt (Just session) $
+            {# call userauth_publickey_fromfile_ex #} (toPointer session) usernameptr (fromIntegral usernamelen) publicptr privateptr passphraseptr
 
 -- | Perform username/password authentication.
 usernamePasswordAuth :: Session -- ^ Session
