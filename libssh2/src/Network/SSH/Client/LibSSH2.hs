@@ -65,7 +65,7 @@ socketConnect hostname port = do
 -- | Execute some actions within SSH2 connection.
 -- Uses public key authentication.
 withSSH2 :: FilePath          -- ^ Path to known_hosts file
-         -> FilePath          -- ^ Path to public key file
+         -> Maybe FilePath    -- ^ Path to public key file. Nothing derives it from the private key
          -> FilePath          -- ^ Path to private key file
          -> String            -- ^ Passphrase
          -> String            -- ^ Remote user name
@@ -261,7 +261,7 @@ withChannelBy createChannel extractChannel actions =
 -- | Execute some actions within SFTP connection.
 -- Uses public key authentication.
 withSFTP :: FilePath          -- ^ Path to known_hosts file
-         -> FilePath          -- ^ Path to public key file
+         -> Maybe FilePath    -- ^ Path to public key file. Nothing derives it from the private key
          -> FilePath          -- ^ Path to private key file
          -> String            -- ^ Passphrase
          -> String            -- ^ Remote user name
